@@ -2,8 +2,13 @@
   <div id="home">
     <div class="header">
       <h2>拆小鹤</h2>
-      <span v-if="loginStatus === false" @click="showLogin">登录</span>
-      <span v-else @click="showLogout">注销</span>
+      <div  v-if="loginStatus === false">
+        <span @click="showLogin" class="btn">登录</span>
+      </div>
+      <div v-else >
+        <span class="username">{{userInfo.username}}</span> 
+        <span @click="showLogout" class="btn">注销</span>
+      </div>
     </div>
     <div class="container">
       <p>小鹤音形拆字、赛文、成绩记录系统</p>
@@ -67,9 +72,15 @@
 </template>
 
 <script>
+import API from '../api/index'
 export default {
   data () {
     return {
+      userInfo: {
+        username: '',
+        id: null,
+        email: '',
+      },
       // 未登录状态 还是已经登录 false 代表未登录， true表示已经登录
       loginStatus: false,
       // 未登录状态 显示/隐藏 登录框 false 表示隐藏 true 表示显示
@@ -111,23 +122,65 @@ export default {
       this.loginOrRegister = 0
     },
     login () {
-      console.log('登录成功')
-      this.toggleLoginBox = false
-      this.loginStatus = true
+      let username = this.formDataLogin.username
+      let password = this.formDataLogin.password
+      if (username && password) {
+        API.login(username, password, true).then(res => {
+          this.$message.success('登录成功')
+          this.toggleLoginBox = false
+          this.loginStatus = true
+          this.userInfo.username = res.username
+          this.userInfo.id = res.id
+          this.userInfo.email = res.email
+        }, err => {
+          this.$message.error('请正确输入账号和密码')
+          this.formDataLogin.username = ''
+          this.formDataLogin.password = ''
+        })
+      } else {
+        this.$message.warning('请输入账号和密码')
+      }
     },
     register () {
-      console.log('注册成功')
-      this.toggleLoginBox = false
-      this.loginStatus = true
+      let username = this.formDataRegister.username
+      let email = this.formDataRegister.email
+      let password = this.formDataRegister.password
+      if (username, email, password) {
+        API.userRegister(username, email, password).then(res => {
+          this.$message.success('注册成功')
+          this.toggleLoginBox = false
+          this.loginStatus = true
+          API.login(username, password, true).then(res => {
+            this.userInfo.username = res.username
+            this.userInfo.id = res.id
+            this.userInfo.email = res.email
+          })
+        }, err => {
+          this.$message.success('注册失败')
+        })
+      } else {
+        this.$message.warning('请填写信息')
+      }
     },
     logout () {
-      console.log('你已退出')
+      API.logout().then(() => {
+        this.$message.success('退出成功')
       this.logoutDialog = false
       this.loginStatus = false
+      })
     }
   },
   mounted () {
-    this.loginStatus = false
+    API.loginStatus().then(res => {
+      this.loginStatus = true
+      this.userInfo.username = res.username
+      this.userInfo.id = res.id
+      this.userInfo.email = res.email
+      this.$message.success( '刷新登录成功')
+    }, err => {
+      this.loginStatus = false
+      this.$message.warning('请登录')
+    })
   }
 }
 </script>
@@ -135,7 +188,6 @@ export default {
 <style lang="scss" scoped>
 #home {
   height: 100%;
-  background: #ccc;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -153,7 +205,8 @@ export default {
     span {
       color: #787878;
       cursor: pointer;
-      &:hover {
+      margin: 0 10px;
+      &.btn:hover  {
         color: blue;
       }
     }
